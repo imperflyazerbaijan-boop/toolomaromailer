@@ -1,0 +1,7 @@
+/.venv/
+/data/
+/input/
+/toolomaro_emails.xlsx
+*.tmp.xlsx
+__pycache__/
+*.pyc
