@@ -36,3 +36,6 @@ Export your actual Toolomaro AdSense Countries report, normalize the headers to 
 .venv\Scripts\python.exe market_priority.py path\to\report.csv --min-views 1000
 ```
 The output is a console ranking of the 40 markets, with insufficient/no-data flags. It does not modify the two-column contact spreadsheet or automatically change source scheduling. See MARKET_RESEARCH.md for the independent 2025 proxy and its limitations.
+
+## Keyless public market research
+Run `python public_market.py` (standard library only). Uses the official World Bank Indicators API without credentials, requesting aggregate population, internet penetration and GDP per capita for 39 supported markets; Taiwan is explicitly listed as N/A. It batches markets per indicator to avoid unnecessary requests and caches each successful indicator in data/public_market.json. It does not collect business identities or email addresses, and does not modify the contact workbook. These economic indicators are not AdSense RPM. A live run and tests of this new module have not been verified. Official API documentation: https://datahelpdesk.worldbank.org/knowledgebase/articles/889392 and https://datahelpdesk.worldbank.org/knowledgebase/articles/898581-api-basic-call-structures.
