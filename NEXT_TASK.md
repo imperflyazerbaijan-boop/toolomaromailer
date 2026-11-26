@@ -1,7 +1,7 @@
 # Next tasks
-1. Read TASK_PROMPT.md, PREVIOUS_TASK.md and CURRENT_TASK.md.
-2. Verify existing repository and archive; inventory reusable modules.
-3. Produce evidence-based country prioritization and source feasibility report.
-4. Implement concurrent Windows workflow for authorized/opt-in contact records, persistent queue, per-item fault isolation, validation and exact two-column Excel export.
-5. Test malformed data, network loss, 400/403/404/429/5xx, timeouts, restart, deduplication, Excel lock and multi-country concurrency using controlled fixtures and authorized sources.
-6. Document installation and launch commands; commit code and actual test results. Keep handoff files updated; do not commit private data or credentials.
+1. Read the four handoff files, README.md, RESEARCH.md and TEST_RESULTS.md.
+2. Verify Windows GitHub Actions output or run python -m unittest -v on Windows, record evidence.
+3. Obtain actual authorized opt-in data source exports and permission documentation; implement only permitted source integrations if needed. Do not build bulk public-email harvesting or access-control circumvention.
+4. Research actual Toolomaro AdSense country RPM when sufficient first-party data is available; use reputable ad market reports as proxies meanwhile.
+5. Test actual authorized imports, DNS failure recovery and domain checks with permitted network access. Add independent country progress, long-running process interruption and large-file stress tests.
+6. Improve the Windows launcher and operator documentation based on verified tests. Keep handoff files current; no secrets, consent evidence or contact datasets in GitHub.
