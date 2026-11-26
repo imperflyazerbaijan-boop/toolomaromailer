@@ -1,0 +1,12 @@
+[
+  {
+    "id": "authorized-provider-germany",
+    "enabled": false,
+    "country": "Germany",
+    "url": "https://example.com/authorized-contact-api",
+    "authorization_reference": "Replace with documented provider permission and consent scope",
+    "token_env": "TOOLOMARO_PROVIDER_TOKEN",
+    "interval_seconds": 300,
+    "page_delay_seconds": 2
+  }
+]
