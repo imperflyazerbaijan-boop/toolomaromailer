@@ -9,7 +9,7 @@ if errorlevel 1 (
   .venv\Scripts\python.exe -m pip install -r requirements.txt
   if errorlevel 1 goto fail
 )
-.venv\Scripts\python.exe main.py --watch
+.venv\Scripts\python.exe advanced.py
 pause
 exit /b
 :fail
