@@ -1,7 +1,7 @@
 # Next tasks
-1. Read master spec, current/previous/next task docs, README, RESEARCH and TEST_RESULTS.
-2. Verify Windows GitHub Actions or execute on real Windows; investigate platform-specific locking and launcher behavior.
-3. Select actual permitted providers with user-owned accounts and consent data; verify API terms, permissions, field mapping, pagination and rate limits. Add provider-specific adapters and test with authorized credentials; do not use public bulk email harvesting or evade access restrictions.
-4. Run networked DNS and authorized endpoint E2E tests, kill/restart during processing, disk-full, long-running soak, and larger dataset tests. Improve isolation based on evidence. Note per-source cycle waits on slowest request, and source-specific backoff remains.
-5. Research empirical country-level advertising data (first-party AdSense when available) and compliant acquisition channels. No universal official AdSense country RPM list.
-6. Update all handoff docs and actual test evidence; commit progress.
+1. Read all handoff docs, README, MARKET_RESEARCH.md, RESEARCH.md and TEST_RESULTS.md.
+2. Configure a real user-owned permission-based audience with documented scope; verify exact country field, permission ID, credentials and provider response using authorized access. No secrets in GitHub.
+3. Verify Windows installation, real network and DNS, API E2E, interruption/restart, sustained run, disk failures and locked Excel. Reconcile deleted/archived members and mutable offset pagination before campaign use.
+4. Supply actual Toolomaro AdSense Countries report for 40-market ranking; fill missing proxy markets with comparable documented data if available. Current proxy is not RPM.
+5. Research permissible company discovery and acquisition channels; national platform structure and access audit remains incomplete. Use official/licensed sources; do not harvest bulk public email lists or evade platform limits. Do not claim the original autonomous search objective is met.
+6. Keep task files and test results updated. No production-ready claim before real end-to-end verification.
