@@ -5,3 +5,5 @@
 *.tmp.xlsx
 __pycache__/
 *.pyc
+
+/sources.json
