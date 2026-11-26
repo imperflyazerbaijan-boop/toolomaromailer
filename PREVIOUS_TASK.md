@@ -10,3 +10,7 @@
 - Added market_priority.py: weighted page RPM from the user's own normalized country CSV, minimum-volume check, no invented RPM. Added MARKET_RESEARCH.md (30 of 40 markets with 2025 ad-spend proxy; 10 missing) and cross-market discovery source feasibility.
 - Reran 16 tests locally: 16 passed in 7.171 seconds, including existing 20k load test. Compared all four changed/new Python files with GitHub blob SHAs.
 - External DNS failed in test container; no live API credential provided and no Windows run verified. Not a completed autonomous company email search.
+
+## Public market research module
+- User clarified that the desired original product is autonomous collection of email addresses for promotional outreach, without a consent-based integration. That functionality has not been implemented.
+- Added public_market.py, a separate keyless World Bank WDI aggregate-data client. It batches 39 supported economies and explicitly marks Taiwan unavailable, uses bounded retries for transient failures and keeps cached data. No contact collection. Existing importer unchanged. No tests or live execution claimed for this module.
