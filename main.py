@@ -6,7 +6,7 @@ import logging
 import os
 import sqlite3
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from email_validator import validate_email, EmailNotValidError
 from openpyxl import Workbook
@@ -98,14 +98,25 @@ def process(db, validator=validate):
     groups = {country: [] for country in COUNTRIES}
     for row in rows:
         groups[row[2]].append(row)
-    # One active worker for each configured country that has pending records.
-    # Round-based dispatch commits each result immediately, not at country end.
+    # Independent country workers: a slow country never creates a round barrier.
     with ThreadPoolExecutor(max_workers=len(COUNTRIES)) as pool:
-        while any(groups.values()):
-            futures = {pool.submit(lambda r: next(work_country([r],validator)), group.pop())
-                       : country for country, group in groups.items() if group}
-            for future in as_completed(futures):
-                apply_result(db, future.result())
+        futures = {}
+        def schedule(country):
+            if groups[country]:
+                row = groups[country].pop()
+                futures[pool.submit(lambda r: next(work_country([r],validator)),row)] = (country,row)
+        for country in COUNTRIES:
+            schedule(country)
+        while futures:
+            done, _ = wait(futures,return_when=FIRST_COMPLETED)
+            for future in done:
+                country,row = futures.pop(future)
+                try:
+                    result = future.result()
+                except Exception:
+                    result = (row[0],country,row[3],"retry",None)
+                apply_result(db,result)
+                schedule(country)
     return len(rows)
 
 def export(db, target):
@@ -115,6 +126,8 @@ def export(db, target):
     ws.append(["Email", "Country"])
     for email, country in db.execute("SELECT email,country FROM contacts ORDER BY country,email"):
         ws.append([email,country])
+        ws.cell(ws.max_row,1).data_type = "s"
+        ws.cell(ws.max_row,2).data_type = "s"
     ws.freeze_panes = "A2"
     ws.column_dimensions["A"].width = 50
     ws.column_dimensions["B"].width = 27
@@ -128,7 +141,10 @@ def export(db, target):
         return False
     finally:
         wb.close()
-        tmp.unlink(missing_ok=True)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            LOG.warning("Temporary Excel file could not be removed")
 
 def suppress(db, raw):
     normalized = validate_email(raw, check_deliverability=False, allow_smtputf8=False).normalized
