@@ -51,6 +51,7 @@ def init(db):
         id TEXT PRIMARY KEY, cursor TEXT, next_at REAL NOT NULL DEFAULT 0,
         failures INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'pending',
         records INTEGER NOT NULL DEFAULT 0)""")
+    db.execute("CREATE TABLE IF NOT EXISTS host_state(host TEXT PRIMARY KEY, next_at REAL NOT NULL)")
     db.commit()
 
 def fetch(src,cursor):
@@ -121,17 +122,26 @@ def sync(db,sources,fetcher=fetch):
     """At most one page per due source per tick; checkpoint with record insertion."""
     import hashlib
     init(db)
-    due=[]
+    candidates=[]
+    now=time.time()
     for src in sources:
         with db:
             db.execute("INSERT OR IGNORE INTO source_state(id) VALUES(?)",(src["id"],))
         cursor,at,attempt=db.execute("SELECT cursor,next_at,failures FROM source_state WHERE id=?",(src["id"],)).fetchone()
-        if at<=time.time():
-            due.append((src,cursor,attempt))
+        host=urlsplit(src["url"]).hostname if "url" in src else src["id"]
+        cooldown=db.execute("SELECT next_at FROM host_state WHERE host=?",(host,)).fetchone()
+        if at<=now and (not cooldown or cooldown[0]<=now):
+            candidates.append((at,src["id"],host,src,cursor,attempt))
+    due=[]
+    used=set()
+    for _,_,host,src,cursor,attempt in sorted(candidates,key=lambda r:(r[0],r[1])):
+        if host not in used:
+            due.append((src,cursor,attempt,host))
+            used.add(host)
     with ThreadPoolExecutor(max_workers=min(40,max(1,len(due)))) as pool:
-        futures={pool.submit(fetcher,src,cursor):(src,cursor,attempt) for src,cursor,attempt in due}
+        futures={pool.submit(fetcher,src,cursor):(src,cursor,attempt,host) for src,cursor,attempt,host in due}
         for f in as_completed(futures):
-            src,cursor,attempt=futures[f]
+            src,cursor,attempt,host=futures[f]
             try:
                 rows,nxt=parse_page(src,f.result(),cursor)
             except Exception as exc:
@@ -139,6 +149,8 @@ def sync(db,sources,fetcher=fetch):
                 with db:
                     db.execute("UPDATE source_state SET status=?,next_at=?,failures=failures+1 WHERE id=?",
                                (status,time.time()+delay,src["id"]))
+                    if status=="rate_limited":
+                        db.execute("INSERT INTO host_state VALUES(?,?) ON CONFLICT(host) DO UPDATE SET next_at=max(next_at,excluded.next_at)",(host,time.time()+delay))
                 continue
             with db:
                 for email,country,evidence in rows:
