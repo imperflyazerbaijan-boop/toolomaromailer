@@ -1,3 +1,3 @@
-# Current task — 2026-11-26
-Status: v0.1 importer implemented and local controlled tests passed. Not the requested autonomous web email scraper. No automatic public directory scraping, platform adapters, or mail sending. Requires actual authorized, opt-in CSV inputs; no contacts provided. 40 countries configured, not an empirical RPM ranking.
-Read README.md, RESEARCH.md and TEST_RESULTS.md before changing code. The Windows launcher and CI workflow exist, but actual Windows execution and CI success have not been observed. Direct cloning inside the test container failed due to DNS restrictions; exact code copies were verified using Git blob hashes before running tests.
+# Current task — v0.2 checkpoint
+Status: advanced contact processing and authorized API polling implemented and controlled local tests passed. Not a completed autonomous international discovery system. The disabled example API is not a provider. No live platform search or automatic public email collection. No Windows or external DNS/API E2E verified. GitHub repository public; keep credentials, personal data, consent evidence and exports out of it.
+Read README.md, RESEARCH.md and TEST_RESULTS.md. Main entry point is run.bat -> advanced.py. Continue only with documented authorized sources and actual provider consent fields. Do not mark as 100% production-ready.
