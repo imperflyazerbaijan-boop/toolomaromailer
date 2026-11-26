@@ -1,3 +1,3 @@
-# Current task
-Status: specification and handoff documentation only.
-Next active work: verify repository contents, inspect original archive if accessible, research advertising market evidence and lawful business discovery sources for 40+ countries. Record actual sources, access conditions, supported data fields and limitations. Do not infer email availability from directory names. No implementation or test success claimed.
+# Current task — 2026-11-26
+Status: v0.1 importer implemented and local controlled tests passed. Not the requested autonomous web email scraper. No automatic public directory scraping, platform adapters, or mail sending. Requires actual authorized, opt-in CSV inputs; no contacts provided. 40 countries configured, not an empirical RPM ranking.
+Read README.md, RESEARCH.md and TEST_RESULTS.md before changing code. The Windows launcher and CI workflow exist, but actual Windows execution and CI success have not been observed. Direct cloning inside the test container failed due to DNS restrictions; exact code copies were verified using Git blob hashes before running tests.
