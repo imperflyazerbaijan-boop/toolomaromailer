@@ -8,13 +8,20 @@ import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
-from email_validator import validate_email, EmailNotValidError
+from email_validator import validate_email, EmailNotValidError, EmailUndeliverableError, caching_resolver
 from openpyxl import Workbook
 
 ROOT = Path(__file__).resolve().parent
 COUNTRIES = tuple((ROOT / "countries.txt").read_text(encoding="utf-8").splitlines())
 COUNTRY_NAMES = {c.casefold(): c for c in COUNTRIES}
 LOG = logging.getLogger("toolomaro")
+RESOLVER = None
+
+def resolver():
+    global RESOLVER
+    if RESOLVER is None:
+        RESOLVER = caching_resolver(timeout=5)
+    return RESOLVER
 
 def connect(path):
     db = sqlite3.connect(path, timeout=30)
@@ -58,11 +65,22 @@ def ingest(db, folder):
 
 def validate(raw):
     try:
-        info = validate_email(raw, check_deliverability=True, timeout=5, allow_smtputf8=False)
+        syntax = validate_email(raw, check_deliverability=False, allow_smtputf8=False)
+    except EmailNotValidError:
+        return "rejected", None
+    try:
+        info = validate_email(syntax.normalized, check_deliverability=True,
+                              dns_resolver=resolver(), allow_smtputf8=False)
         if not getattr(info, "mx", None):
             return "retry", None
         return "accepted", info.normalized
-    except EmailNotValidError:
+    except EmailUndeliverableError as exc:
+        # Unexpected resolver errors are wrapped by email-validator.
+        # Preserve records when the cause is not a confirmed DNS rejection.
+        if exc.__cause__ is not None:
+            import dns.resolver
+            if not isinstance(exc.__cause__, (dns.resolver.NXDOMAIN,dns.resolver.NoAnswer)):
+                return "retry", None
         return "rejected", None
     except Exception:
         return "retry", None
