@@ -1,4 +1,4 @@
-# ToolomaroMailer v0.2 — advanced authorized contact pipeline
+# ToolomaroMailer v0.3 — advanced authorized contact pipeline
 Windows / Python 3.11+. This program imports consented business contact exports and polls explicitly authorized JSON APIs. It is NOT an autonomous web-directory scraper or bulk mail sender.
 
 ## Install and run
@@ -25,4 +25,14 @@ Access denied triggers a source cooldown. 429 honors Retry-After and shares cool
 - Tests: .venv\Scripts\python.exe -m unittest -v.
  
 ## Limitations
-12 controlled tests passed locally on Linux including 20,000 synthetic records. Windows and real external API/DNS end-to-end execution not verified. No real source, consent list or live directory adapter provided; no guarantee of no blocks, exact revenue, mailbox existence or universal fault tolerance. No auto-harvesting of public email addresses. Actual market research and source permissions are still outstanding. See RESEARCH.md, TEST_RESULTS.md and handoff files.
+16 controlled tests passed locally on Linux including 20,000 synthetic records. Windows and real external API/DNS end-to-end execution not verified. A Mailchimp adapter is provided, but no real account credentials, consent list or live directory adapter provided; no guarantee of no blocks, exact revenue, mailbox existence or universal fault tolerance. No auto-harvesting of public email addresses. Actual market research and source permissions are still outstanding. See RESEARCH.md, TEST_RESULTS.md and handoff files.
+
+## v0.3: Mailchimp (read-only)
+If you already have a Toolomaro audience with explicit marketing consent, copy sources.mailchimp.example.json to sources.json. Configure your own datacenter, audience ID, exact marketing permission ID and country merge tag containing an English country name. Set the API key in the named environment variable locally; never share or commit it. Enable only after permission is documented. The adapter requests 100 members per page and accepts subscribed members with the selected explicit permission. Unsubscribed, cleaned and explicitly revoked records returned by the API are suppressed globally; archived/deleted members absent from API responses are not automatically reconciled, and explicit re-consent needs a reviewed suppression update. Pagination is offset-based; changing audiences can cause skips or duplicates. Verify and reconcile against the provider before any campaign. No sending is implemented.
+ 
+## v0.3: country priorities
+Export your actual Toolomaro AdSense Countries report, normalize the headers to Country,PageViews,EstimatedEarnings (numeric values in one consistent currency and nonoverlapping periods), save outside Git, then:
+```bat
+.venv\Scripts\python.exe market_priority.py path\to\report.csv --min-views 1000
+```
+The output is a console ranking of the 40 markets, with insufficient/no-data flags. It does not modify the two-column contact spreadsheet or automatically change source scheduling. See MARKET_RESEARCH.md for the independent 2025 proxy and its limitations.
