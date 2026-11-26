@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from email_validator import validate_email, EmailNotValidError, EmailUndeliverableError, caching_resolver
 from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 
 ROOT = Path(__file__).resolve().parent
 COUNTRIES = tuple((ROOT / "countries.txt").read_text(encoding="utf-8").splitlines())
@@ -34,6 +35,8 @@ def connect(path):
     CREATE TABLE IF NOT EXISTS contacts(
         key TEXT PRIMARY KEY, email TEXT NOT NULL, country TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS suppressed(key TEXT PRIMARY KEY);
+    CREATE INDEX IF NOT EXISTS queue_due ON queue(country,status,next_at);
+    CREATE TABLE IF NOT EXISTS imported_files(path TEXT PRIMARY KEY, size INTEGER NOT NULL, mtime INTEGER NOT NULL);
     """)
     return db
 
@@ -41,6 +44,10 @@ def ingest(db, folder):
     """Files are exports from authorized opt-in sources, never scraped lists."""
     for file in sorted(folder.glob("*.csv")):
         try:
+            stamp=file.stat()
+            sig=(stamp.st_size,stamp.st_mtime_ns)
+            if db.execute("SELECT size,mtime FROM imported_files WHERE path=?",(str(file),)).fetchone()==sig:
+                continue
             with file.open(encoding="utf-8-sig", newline="") as f:
                 reader = csv.DictReader(f)
                 required = {"Email", "Country", "Consent", "ConsentEvidence"}
@@ -60,6 +67,10 @@ def ingest(db, folder):
                                        (key,email,country,evidence))
                     except (ValueError, TypeError):
                         LOG.warning("Skipped malformed record")
+            stamp_after=file.stat()
+            if sig==(stamp_after.st_size,stamp_after.st_mtime_ns):
+                with db:
+                    db.execute("INSERT OR REPLACE INTO imported_files VALUES(?,?,?)",(str(file),*sig))
         except (OSError, UnicodeError, csv.Error):
             LOG.warning("Skipped unreadable CSV; other files continue")
 
@@ -110,12 +121,11 @@ def apply_result(db, result):
                    (status,time.time()+delay,ident))
 
 def process(db, validator=validate):
-    rows = db.execute("""SELECT id,email,country,attempts FROM queue
-                         WHERE status IN ('pending','retry') AND next_at<=?
-                         ORDER BY country,id""",(time.time(),)).fetchall()
-    groups = {country: [] for country in COUNTRIES}
-    for row in rows:
-        groups[row[2]].append(row)
+    groups = {country: db.execute("""SELECT id,email,country,attempts FROM queue
+                         WHERE country=? AND status IN ('pending','retry') AND next_at<=?
+                         ORDER BY next_at,id LIMIT 500""",(country,time.time())).fetchall()
+              for country in COUNTRIES}
+    count=sum(map(len,groups.values()))
     # Independent country workers: a slow country never creates a round barrier.
     with ThreadPoolExecutor(max_workers=len(COUNTRIES)) as pool:
         futures = {}
@@ -135,20 +145,23 @@ def process(db, validator=validate):
                     result = (row[0],country,row[3],"retry",None)
                 apply_result(db,result)
                 schedule(country)
-    return len(rows)
+    return count
 
 def export(db, target):
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Emails"
-    ws.append(["Email", "Country"])
-    for email, country in db.execute("SELECT email,country FROM contacts ORDER BY country,email"):
-        ws.append([email,country])
-        ws.cell(ws.max_row,1).data_type = "s"
-        ws.cell(ws.max_row,2).data_type = "s"
+    count=db.execute("SELECT count(*) FROM contacts").fetchone()[0]
+    if count>1048575:
+        LOG.error("Excel one-sheet row limit exceeded; records retained in SQLite")
+        return False
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Emails")
     ws.freeze_panes = "A2"
     ws.column_dimensions["A"].width = 50
     ws.column_dimensions["B"].width = 27
+    ws.append(["Email", "Country"])
+    for email, country in db.execute("SELECT email,country FROM contacts ORDER BY country,email"):
+        a,b=WriteOnlyCell(ws,value=email),WriteOnlyCell(ws,value=country)
+        a.data_type=b.data_type="s"
+        ws.append([a,b])
     tmp = target.with_name(target.stem+".tmp.xlsx")
     try:
         wb.save(tmp)
