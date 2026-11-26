@@ -1,0 +1,15 @@
+[
+  {
+    "id": "toolomaro-owned-audience",
+    "provider": "mailchimp",
+    "enabled": false,
+    "datacenter": "us1",
+    "audience_id": "REPLACE",
+    "permission_id": "REPLACE",
+    "country_merge_tag": "COUNTRY",
+    "token_env": "TOOLOMARO_MAILCHIMP_KEY",
+    "authorization_reference": "Replace with documentation of explicit Toolomaro marketing permission",
+    "interval_seconds": 300,
+    "page_delay_seconds": 2
+  }
+]
