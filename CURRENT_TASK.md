@@ -1,3 +1,4 @@
-# Current task — v0.2 checkpoint
-Status: advanced contact processing and authorized API polling implemented and controlled local tests passed. Not a completed autonomous international discovery system. The disabled example API is not a provider. No live platform search or automatic public email collection. No Windows or external DNS/API E2E verified. GitHub repository public; keep credentials, personal data, consent evidence and exports out of it.
-Read README.md, RESEARCH.md and TEST_RESULTS.md. Main entry point is run.bat -> advanced.py. Continue only with documented authorized sources and actual provider consent fields. Do not mark as 100% production-ready.
+# Current task — v0.3 checkpoint
+Implemented and locally tested advanced authorized-contact pipeline, including read-only Mailchimp adapter, country RPM ranking from first-party AdSense CSV and 30/40 market proxy data. Main entry remains run.bat -> advanced.py. All 16 controlled tests pass; exact hashes in TEST_RESULTS.md.
+No real account or source credentials or actual AdSense report provided. No live API, DNS, Windows or full directory E2E verified. No automated public email harvesting or arbitrary directory discovery implemented. Mailchimp sample is disabled by default. Archived/deleted audience members absent from API pages are not reconciled automatically; review provider records before outreach. No marketing email sender.
+Read README.md, MARKET_RESEARCH.md, RESEARCH.md, TEST_RESULTS.md. Repository is public: do not commit credentials, contact records or AdSense exports.
