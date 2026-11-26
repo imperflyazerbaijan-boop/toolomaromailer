@@ -12,6 +12,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit, urlencode, parse_qsl, urlunsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 import main
+import mailchimp_adapter
 
 LOG = logging.getLogger("toolomaro")
 MAX_BODY = 5 * 1024 * 1024
@@ -31,10 +32,14 @@ def read_config(path):
         try:
             if src.get("enabled") is not True:
                 continue
+            if src.get("provider") == "mailchimp":
+                src = mailchimp_adapter.prepare(src)
+            elif src.get("provider", "generic") != "generic":
+                raise ValueError("Unknown provider")
             name, country, url = src["id"], src["country"], src["url"]
             u = urlsplit(url)
             if (not isinstance(name,str) or not name or name in seen or
-                country not in main.COUNTRIES or u.scheme != "https" or
+                (country not in main.COUNTRIES and not (src.get("provider") == "mailchimp" and country == "ALL")) or u.scheme != "https" or
                 not u.hostname or u.username or u.password or u.fragment or
                 not str(src.get("authorization_reference","")).strip()):
                 raise ValueError("Invalid source")
@@ -55,6 +60,8 @@ def init(db):
     db.commit()
 
 def fetch(src,cursor):
+    if src.get("provider") == "mailchimp":
+        return mailchimp_adapter.page(src,cursor,read_json,main.COUNTRY_NAMES)
     u = urlsplit(src["url"])
     params = [(k,v) for k,v in parse_qsl(u.query,keep_blank_values=True) if k!="cursor"]
     if cursor is not None:
@@ -67,6 +74,10 @@ def fetch(src,cursor):
         if not token:
             raise PermissionError("Missing API credential")
         headers["Authorization"] = "Bearer "+token
+    return read_json(url,headers)
+
+def read_json(url,headers):
+    headers = {"Accept":"application/json","User-Agent":"ToolomaroMailer/0.3 authorized-sync", **headers}
     with build_opener(NoRedirect()).open(Request(url,headers=headers),timeout=15) as resp:
         body = resp.read(MAX_BODY+1)
         if len(body)>MAX_BODY:
@@ -112,10 +123,12 @@ def parse_page(src,payload,cursor):
             continue
         email,evidence = record.get("email"),record.get("consent_evidence")
         if (record.get("consent") is not True or not isinstance(email,str) or
-            not isinstance(evidence,str) or not email.strip() or not evidence.strip() or
-            record.get("country",src["country"]) != src["country"]):
+            not isinstance(evidence,str) or not email.strip() or not evidence.strip()):
             continue
-        rows.append((email.strip(),src["country"],evidence.strip()))
+        country = record.get("country",src["country"])
+        if not isinstance(country,str) or country not in main.COUNTRIES or (src["country"] != "ALL" and country != src["country"]):
+            continue
+        rows.append((email.strip(),country,evidence.strip()))
     return rows,nxt
 
 def sync(db,sources,fetcher=fetch):
@@ -143,7 +156,11 @@ def sync(db,sources,fetcher=fetch):
         for f in as_completed(futures):
             src,cursor,attempt,host=futures[f]
             try:
-                rows,nxt=parse_page(src,f.result(),cursor)
+                payload=f.result()
+                rows,nxt=parse_page(src,payload,cursor)
+                revoked=payload.get("revoked",[]) if src.get("provider") == "mailchimp" else []
+                if not isinstance(revoked,list):
+                    raise ValueError("Malformed revocation list")
             except Exception as exc:
                 status,delay=failure(exc,attempt)
                 with db:
@@ -153,6 +170,16 @@ def sync(db,sources,fetcher=fetch):
                         db.execute("INSERT INTO host_state VALUES(?,?) ON CONFLICT(host) DO UPDATE SET next_at=max(next_at,excluded.next_at)",(host,time.time()+delay))
                 continue
             with db:
+                for raw in revoked:
+                    if not isinstance(raw,str):
+                        continue
+                    try:
+                        key=main.validate_email(raw,check_deliverability=False,allow_smtputf8=False).normalized.casefold()
+                    except main.EmailNotValidError:
+                        continue
+                    db.execute("INSERT OR IGNORE INTO suppressed VALUES(?)",(key,))
+                    db.execute("DELETE FROM contacts WHERE key=?",(key,))
+                    db.execute("UPDATE queue SET status='suppressed' WHERE lower(email)=?",(key,))
                 for email,country,evidence in rows:
                     key=hashlib.sha256((email.casefold()+"\0"+country).encode()).hexdigest()
                     db.execute("INSERT OR IGNORE INTO queue(id,email,country,evidence) VALUES(?,?,?,?)",
